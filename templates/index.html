@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PPTX to JPEG Converter</title>
+  <title>PPTX Converter</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     [hidden] { display: none !important; }
@@ -22,28 +22,54 @@
       background: #fff;
       border-radius: 12px;
       box-shadow: 0 2px 16px rgba(0,0,0,0.10);
-      padding: 40px;
       width: 100%;
       max-width: 480px;
+      overflow: hidden;
     }
 
-    h1 {
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: #1a1a1a;
-      margin-bottom: 6px;
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid #e8eaf6;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #888;
+      text-align: center;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.15s, border-color 0.15s;
+      user-select: none;
+    }
+
+    .tab:hover { color: #4f6ef7; }
+
+    .tab.active {
+      color: #4f6ef7;
+      border-bottom-color: #4f6ef7;
+    }
+
+    /* Content */
+    .content {
+      padding: 32px;
     }
 
     .subtitle {
-      font-size: 0.875rem;
-      color: #666;
-      margin-bottom: 28px;
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 24px;
+      line-height: 1.5;
     }
 
     .drop-zone {
       border: 2px dashed #ccc;
       border-radius: 8px;
-      padding: 40px 20px;
+      padding: 36px 20px;
       text-align: center;
       cursor: pointer;
       transition: border-color 0.2s, background 0.2s;
@@ -56,29 +82,29 @@
       background: #f0f4ff;
     }
 
-    .drop-zone .icon { font-size: 2.5rem; margin-bottom: 10px; }
-    .drop-zone .label { font-size: 0.95rem; color: #444; margin-bottom: 4px; }
-    .drop-zone .hint { font-size: 0.8rem; color: #999; }
+    .drop-zone .icon { font-size: 2.2rem; margin-bottom: 8px; }
+    .drop-zone .label { font-size: 0.9rem; color: #444; margin-bottom: 4px; }
+    .drop-zone .hint { font-size: 0.78rem; color: #aaa; }
 
     #file-input { display: none; }
 
     .filename {
-      margin-top: 12px;
-      font-size: 0.85rem;
+      margin-top: 10px;
+      font-size: 0.82rem;
       color: #4f6ef7;
       font-weight: 500;
-      min-height: 20px;
+      min-height: 18px;
       text-align: center;
     }
 
     .convert-btn {
       display: block;
       width: 100%;
-      margin-top: 20px;
+      margin-top: 18px;
       padding: 12px;
       background: #4f6ef7;
       color: #fff;
-      font-size: 1rem;
+      font-size: 0.95rem;
       font-weight: 600;
       border: none;
       border-radius: 8px;
@@ -90,21 +116,19 @@
     .convert-btn:disabled { background: #b0bce8; cursor: not-allowed; }
 
     /* Progress */
-    .progress-section {
-      margin-top: 22px;
-    }
+    .progress-section { margin-top: 20px; }
 
     .progress-label {
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       color: #555;
-      margin-bottom: 8px;
-      min-height: 18px;
+      margin-bottom: 7px;
+      min-height: 16px;
     }
 
     .progress-track {
       background: #e8eaf6;
       border-radius: 99px;
-      height: 10px;
+      height: 8px;
       overflow: hidden;
     }
 
@@ -116,65 +140,74 @@
       transition: width 0.6s ease;
     }
 
-    .progress-fill.indeterminate {
+    .progress-fill.active {
       animation: pulse 1.6s ease-in-out infinite;
     }
 
     @keyframes pulse {
-      0%   { opacity: 1; }
-      50%  { opacity: 0.5; }
-      100% { opacity: 1; }
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.55; }
     }
 
     .error-box {
-      margin-top: 16px;
-      padding: 12px 16px;
+      margin-top: 14px;
+      padding: 11px 14px;
       background: #fff0f0;
       border: 1px solid #fcc;
       border-radius: 8px;
       color: #c0392b;
-      font-size: 0.875rem;
+      font-size: 0.82rem;
     }
 
     .success-box {
-      margin-top: 16px;
-      padding: 12px 16px;
+      margin-top: 14px;
+      padding: 11px 14px;
       background: #f0fff4;
       border: 1px solid #a3d9a5;
       border-radius: 8px;
       color: #276749;
-      font-size: 0.875rem;
+      font-size: 0.82rem;
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>PPTX to JPEG</h1>
-    <p class="subtitle">Upload a PowerPoint file to convert each slide (including animation states) into JPEG images.</p>
-
-    <div class="drop-zone" id="drop-zone">
-      <div class="icon">📂</div>
-      <div class="label">Drag &amp; drop your .pptx file here</div>
-      <div class="hint">or click to browse</div>
+    <div class="tabs">
+      <div class="tab active" data-tab="jpeg">JPEG Slides</div>
+      <div class="tab" data-tab="pdf">PDF</div>
     </div>
-    <input type="file" id="file-input" accept=".pptx" />
 
-    <div class="filename" id="filename"></div>
+    <div class="content">
+      <p class="subtitle" id="subtitle">
+        Converts each slide — including animation click states — into separate JPEG images, bundled as a ZIP.
+      </p>
 
-    <button class="convert-btn" id="convert-btn" disabled>Convert &amp; Download ZIP</button>
-
-    <div class="progress-section" id="progress-section" hidden>
-      <div class="progress-label" id="progress-label">Starting…</div>
-      <div class="progress-track">
-        <div class="progress-fill" id="progress-fill"></div>
+      <div class="drop-zone" id="drop-zone">
+        <div class="icon">📂</div>
+        <div class="label">Drag &amp; drop your .pptx file here</div>
+        <div class="hint">or click to browse</div>
       </div>
-    </div>
+      <input type="file" id="file-input" accept=".pptx" />
 
-    <div class="error-box" id="error-box" hidden></div>
-    <div class="success-box" id="success-box" hidden></div>
+      <div class="filename" id="filename"></div>
+
+      <button class="convert-btn" id="convert-btn" disabled>Convert &amp; Download ZIP</button>
+
+      <div class="progress-section" id="progress-section" hidden>
+        <div class="progress-label" id="progress-label"></div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+      </div>
+
+      <div class="error-box" id="error-box" hidden></div>
+      <div class="success-box" id="success-box" hidden></div>
+    </div>
   </div>
 
   <script>
+    const tabs           = document.querySelectorAll('.tab');
+    const subtitleEl     = document.getElementById('subtitle');
     const dropZone       = document.getElementById('drop-zone');
     const fileInput      = document.getElementById('file-input');
     const filenameEl     = document.getElementById('filename');
@@ -185,7 +218,38 @@
     const errorBox       = document.getElementById('error-box');
     const successBox     = document.getElementById('success-box');
 
+    const TAB_CONFIG = {
+      jpeg: {
+        subtitle: 'Converts each slide — including animation click states — into separate JPEG images, bundled as a ZIP.',
+        btnText:  'Convert & Download ZIP',
+        endpoint: '/convert',
+      },
+      pdf: {
+        subtitle: 'Converts the PowerPoint file into a single PDF, preserving fonts and layout.',
+        btnText:  'Convert & Download PDF',
+        endpoint: '/convert-pdf',
+      },
+    };
+
+    let activeTab = 'jpeg';
     let selectedFile = null;
+
+    // Tab switching
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        activeTab = tab.dataset.tab;
+        const cfg = TAB_CONFIG[activeTab];
+        subtitleEl.textContent = cfg.subtitle;
+        convertBtn.textContent = cfg.btnText;
+        // Keep selected file — just reset status displays
+        progressSection.hidden = true;
+        errorBox.hidden = true;
+        successBox.hidden = true;
+        setProgress(0, '');
+      });
+    });
 
     // File selection
     dropZone.addEventListener('click', () => fileInput.click());
@@ -212,11 +276,10 @@
     function setProgress(pct, label) {
       progressFill.style.width = pct + '%';
       progressLabel.textContent = label;
-      // Show pulse animation when stuck at a waiting stage
       if (pct > 0 && pct < 100) {
-        progressFill.classList.add('indeterminate');
+        progressFill.classList.add('active');
       } else {
-        progressFill.classList.remove('indeterminate');
+        progressFill.classList.remove('active');
       }
     }
 
@@ -229,26 +292,24 @@
       progressSection.hidden = false;
       setProgress(5, 'Uploading file…');
 
-      // Step 1: upload
       const formData = new FormData();
       formData.append('file', selectedFile);
 
+      const endpoint = TAB_CONFIG[activeTab].endpoint;
       let job_id;
       try {
-        const res = await fetch('/convert', { method: 'POST', body: formData });
+        const res = await fetch(endpoint, { method: 'POST', body: formData });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.detail || `Upload failed (${res.status})`);
         }
-        const json = await res.json();
-        job_id = json.job_id;
+        job_id = (await res.json()).job_id;
       } catch (err) {
         showError(err.message);
         convertBtn.disabled = false;
         return;
       }
 
-      // Step 2: stream progress via SSE
       const es = new EventSource(`/stream/${job_id}`);
 
       es.onmessage = (e) => {
@@ -264,12 +325,10 @@
 
         if (data.done) {
           es.close();
-          progressFill.classList.remove('indeterminate');
+          progressFill.classList.remove('active');
           successBox.textContent = 'Done! Your download has started.';
           successBox.hidden = false;
           convertBtn.disabled = false;
-
-          // Trigger download
           const a = document.createElement('a');
           a.href = `/download/${job_id}`;
           document.body.appendChild(a);
