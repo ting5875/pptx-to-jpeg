@@ -1,0 +1,5 @@
+.claude/
+*.pptx
+__pycache__/
+*.pyc
+pptx_output/

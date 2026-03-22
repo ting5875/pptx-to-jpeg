@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PPTX to JPEG Converter</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.10);
+      padding: 40px;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 0.875rem;
+      color: #666;
+      margin-bottom: 28px;
+    }
+
+    .drop-zone {
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: #fafafa;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: #4f6ef7;
+      background: #f0f4ff;
+    }
+
+    .drop-zone .icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .drop-zone .label { font-size: 0.95rem; color: #444; margin-bottom: 4px; }
+    .drop-zone .hint { font-size: 0.8rem; color: #999; }
+
+    #file-input { display: none; }
+
+    .filename {
+      margin-top: 12px;
+      font-size: 0.85rem;
+      color: #4f6ef7;
+      font-weight: 500;
+      min-height: 20px;
+      text-align: center;
+    }
+
+    .convert-btn {
+      display: block;
+      width: 100%;
+      margin-top: 20px;
+      padding: 12px;
+      background: #4f6ef7;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .convert-btn:hover:not(:disabled) { background: #3a58e0; }
+    .convert-btn:disabled { background: #b0bce8; cursor: not-allowed; }
+
+    /* Progress */
+    .progress-section {
+      margin-top: 22px;
+    }
+
+    .progress-label {
+      font-size: 0.85rem;
+      color: #555;
+      margin-bottom: 8px;
+      min-height: 18px;
+    }
+
+    .progress-track {
+      background: #e8eaf6;
+      border-radius: 99px;
+      height: 10px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #4f6ef7, #7c9bff);
+      border-radius: 99px;
+      transition: width 0.6s ease;
+    }
+
+    .progress-fill.indeterminate {
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%   { opacity: 1; }
+      50%  { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+
+    .error-box {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: #fff0f0;
+      border: 1px solid #fcc;
+      border-radius: 8px;
+      color: #c0392b;
+      font-size: 0.875rem;
+    }
+
+    .success-box {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: #f0fff4;
+      border: 1px solid #a3d9a5;
+      border-radius: 8px;
+      color: #276749;
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>PPTX to JPEG</h1>
+    <p class="subtitle">Upload a PowerPoint file to convert each slide (including animation states) into JPEG images.</p>
+
+    <div class="drop-zone" id="drop-zone">
+      <div class="icon">📂</div>
+      <div class="label">Drag &amp; drop your .pptx file here</div>
+      <div class="hint">or click to browse</div>
+    </div>
+    <input type="file" id="file-input" accept=".pptx" />
+
+    <div class="filename" id="filename"></div>
+
+    <button class="convert-btn" id="convert-btn" disabled>Convert &amp; Download ZIP</button>
+
+    <div class="progress-section" id="progress-section" hidden>
+      <div class="progress-label" id="progress-label">Starting…</div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+    </div>
+
+    <div class="error-box" id="error-box" hidden></div>
+    <div class="success-box" id="success-box" hidden></div>
+  </div>
+
+  <script>
+    const dropZone       = document.getElementById('drop-zone');
+    const fileInput      = document.getElementById('file-input');
+    const filenameEl     = document.getElementById('filename');
+    const convertBtn     = document.getElementById('convert-btn');
+    const progressSection = document.getElementById('progress-section');
+    const progressLabel  = document.getElementById('progress-label');
+    const progressFill   = document.getElementById('progress-fill');
+    const errorBox       = document.getElementById('error-box');
+    const successBox     = document.getElementById('success-box');
+
+    let selectedFile = null;
+
+    // File selection
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+    });
+
+    function setFile(f) {
+      if (!f.name.toLowerCase().endsWith('.pptx')) { showError('Please select a .pptx file.'); return; }
+      selectedFile = f;
+      filenameEl.textContent = f.name;
+      convertBtn.disabled = false;
+      errorBox.hidden = true;
+      successBox.hidden = true;
+      progressSection.hidden = true;
+      setProgress(0, '');
+    }
+
+    function setProgress(pct, label) {
+      progressFill.style.width = pct + '%';
+      progressLabel.textContent = label;
+      // Show pulse animation when stuck at a waiting stage
+      if (pct > 0 && pct < 100) {
+        progressFill.classList.add('indeterminate');
+      } else {
+        progressFill.classList.remove('indeterminate');
+      }
+    }
+
+    convertBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      errorBox.hidden = true;
+      successBox.hidden = true;
+      convertBtn.disabled = true;
+      progressSection.hidden = false;
+      setProgress(5, 'Uploading file…');
+
+      // Step 1: upload
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      let job_id;
+      try {
+        const res = await fetch('/convert', { method: 'POST', body: formData });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.detail || `Upload failed (${res.status})`);
+        }
+        const json = await res.json();
+        job_id = json.job_id;
+      } catch (err) {
+        showError(err.message);
+        convertBtn.disabled = false;
+        return;
+      }
+
+      // Step 2: stream progress via SSE
+      const es = new EventSource(`/stream/${job_id}`);
+
+      es.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        setProgress(data.pct, data.step);
+
+        if (data.error) {
+          es.close();
+          showError(data.error);
+          convertBtn.disabled = false;
+          return;
+        }
+
+        if (data.done) {
+          es.close();
+          progressFill.classList.remove('indeterminate');
+          successBox.textContent = 'Done! Your download has started.';
+          successBox.hidden = false;
+          convertBtn.disabled = false;
+
+          // Trigger download
+          const a = document.createElement('a');
+          a.href = `/download/${job_id}`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        }
+      };
+
+      es.onerror = () => {
+        es.close();
+        showError('Connection lost during conversion. Please try again.');
+        convertBtn.disabled = false;
+      };
+    });
+
+    function showError(msg) {
+      progressSection.hidden = true;
+      errorBox.textContent = msg;
+      errorBox.hidden = false;
+    }
+  </script>
+</body>
+</html>
